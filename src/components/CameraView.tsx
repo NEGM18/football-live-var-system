@@ -4,6 +4,8 @@ import { useObjectDetector } from '../hooks/useObjectDetector';
 import { useInstantReplay } from '../hooks/useInstantReplay';
 import { assignTeams, rgbToCss } from '../utils/teamClustering';
 import { computeOffsideLine, type OffsideResult } from '../utils/offside';
+import { exitFullscreen, isFullscreenActive, requestFullscreen } from '../utils/fullscreen';
+import { applyHardwareZoom, readZoomRange, type ZoomRange } from '../utils/zoom';
 
 export interface CameraAnalysis {
   persons: Detection[];
@@ -24,6 +26,14 @@ interface CameraViewProps {
   onAnalysis: (analysis: CameraAnalysis) => void;
 }
 
+const DEFAULT_ZOOM_RANGE: ZoomRange = { min: 1, max: 4, step: 0.1, hardware: false };
+
+function touchDistance(touches: React.TouchList): number {
+  const a = touches[0];
+  const b = touches[1];
+  return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+}
+
 const CameraView = forwardRef<CameraViewHandle, CameraViewProps>(function CameraView(
   { active, defendingTeam, goalSide, onAnalysis },
   ref,
@@ -40,6 +50,14 @@ const CameraView = forwardRef<CameraViewHandle, CameraViewProps>(function Camera
 
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [fullscreen, setFullscreen] = useState(false);
+
+  const trackRef = useRef<MediaStreamTrack | null>(null);
+  const [zoomRange, setZoomRange] = useState<ZoomRange>(DEFAULT_ZOOM_RANGE);
+  const zoomRangeRef = useRef(zoomRange);
+  zoomRangeRef.current = zoomRange;
+  const [zoom, setZoom] = useState(1);
+  const pinchRef = useRef<{ startDist: number; startZoom: number } | null>(null);
 
   useEffect(() => {
     let activeStream: MediaStream | null = null;
@@ -59,6 +77,13 @@ const CameraView = forwardRef<CameraViewHandle, CameraViewProps>(function Camera
         if (videoRef.current) {
           videoRef.current.srcObject = s;
         }
+        const track = s.getVideoTracks()[0];
+        trackRef.current = track ?? null;
+        if (track) {
+          const { range, initial } = readZoomRange(track);
+          setZoomRange(range);
+          setZoom(initial);
+        }
         setStream(s);
       })
       .catch((err: unknown) => {
@@ -71,6 +96,56 @@ const CameraView = forwardRef<CameraViewHandle, CameraViewProps>(function Camera
       activeStream?.getTracks().forEach((t) => t.stop());
     };
   }, []);
+
+  // Fullscreen for the live camera view (separate from the VAR review modal).
+  useEffect(() => {
+    const video = videoRef.current;
+    const syncState = () => setFullscreen(isFullscreenActive(video));
+    document.addEventListener('fullscreenchange', syncState);
+    document.addEventListener('webkitfullscreenchange', syncState);
+    video?.addEventListener('webkitendfullscreen', syncState);
+    return () => {
+      document.removeEventListener('fullscreenchange', syncState);
+      document.removeEventListener('webkitfullscreenchange', syncState);
+      video?.removeEventListener('webkitendfullscreen', syncState);
+      if (isFullscreenActive(video)) exitFullscreen(video);
+    };
+  }, []);
+
+  function toggleFullscreen() {
+    if (isFullscreenActive(videoRef.current)) {
+      exitFullscreen(videoRef.current);
+    } else {
+      requestFullscreen(wrapperRef.current, videoRef.current);
+    }
+  }
+
+  function applyZoom(value: number) {
+    const range = zoomRangeRef.current;
+    const clamped = Math.min(range.max, Math.max(range.min, value));
+    setZoom(clamped);
+    if (range.hardware && trackRef.current) {
+      applyHardwareZoom(trackRef.current, clamped);
+    }
+  }
+
+  function handleTouchStart(e: React.TouchEvent) {
+    if (e.touches.length === 2) {
+      pinchRef.current = { startDist: touchDistance(e.touches), startZoom: zoom };
+    }
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    if (e.touches.length === 2 && pinchRef.current) {
+      e.preventDefault();
+      const ratio = touchDistance(e.touches) / pinchRef.current.startDist;
+      applyZoom(pinchRef.current.startZoom * ratio);
+    }
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (e.touches.length < 2) pinchRef.current = null;
+  }
 
   const { getClip } = useInstantReplay(stream);
 
@@ -160,11 +235,55 @@ const CameraView = forwardRef<CameraViewHandle, CameraViewProps>(function Camera
     }
   }
 
+  const digitalZoomStyle = !zoomRange.hardware ? { transform: `scale(${zoom})` } : undefined;
+  const cameraReady = !cameraError && !!stream;
+
   return (
-    <div className="camera-view" ref={wrapperRef}>
-      <video ref={videoRef} autoPlay playsInline muted className="camera-video" />
-      <canvas ref={overlayRef} className="camera-overlay" />
+    <div
+      className="camera-view"
+      ref={wrapperRef}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className="camera-video"
+        style={digitalZoomStyle}
+      />
+      <canvas ref={overlayRef} className="camera-overlay" style={digitalZoomStyle} />
       <canvas ref={sampleCanvasRef} className="camera-sample-canvas" aria-hidden />
+
+      {cameraReady && (
+        <button
+          className="camera-fullscreen-btn"
+          onClick={toggleFullscreen}
+          aria-label={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+          title={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+        >
+          {fullscreen ? '⤢' : '⛶'}
+        </button>
+      )}
+
+      {cameraReady && (
+        <div className="camera-zoom-controls">
+          <span className="camera-zoom-label">{zoom.toFixed(1)}x</span>
+          <input
+            type="range"
+            min={zoomRange.min}
+            max={zoomRange.max}
+            step={zoomRange.step}
+            value={zoom}
+            onChange={(e) => applyZoom(Number(e.target.value))}
+            aria-label="Camera zoom"
+          />
+          {!zoomRange.hardware && <span className="camera-zoom-hint">digital</span>}
+        </div>
+      )}
+
       {cameraError && (
         <div className="camera-message camera-message--error">
           Camera unavailable: {cameraError}. Allow camera access and reload.

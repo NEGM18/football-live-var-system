@@ -38,6 +38,13 @@ not an official officiating tool.
 - **Offside line**: given which colour is the "defending" team and which
   side of the frame their goal is on, sorts defenders by distance from goal
   and draws a line at the second-nearest (the last outfield defender).
+- **Fullscreen live view**: tap the ⛶ button on the camera view to expand it
+  edge-to-edge for a better look during play.
+- **Zoom**: pinch on the camera view, or drag the on-screen zoom slider. On
+  devices/browsers that expose real camera zoom (mainly Chrome on Android),
+  it drives the actual lens/sensor zoom, so detection quality on the zoomed
+  subject stays sharp. Elsewhere it falls back to a digital (CSS) zoom, which
+  magnifies the picture without improving detail.
 - **Match panel**: clock, score, team names, and a tappable event log (goal,
   yellow/red card, foul, potential foul, offside flag, VAR review,
   kickoff/half-time/full-time).
@@ -118,6 +125,8 @@ camera permission when prompted.
 4. Tap **Potential foul** or **VAR Review** to instantly open the last 30
    seconds of footage in a review modal. Scrub with the native video controls,
    or tap a marker on the timeline strip to jump to that logged event.
+5. Pinch on the camera view (or use the on-screen slider) to zoom in, and tap
+   the ⛶ button to expand the live camera to fullscreen.
 
 ## Local development
 
