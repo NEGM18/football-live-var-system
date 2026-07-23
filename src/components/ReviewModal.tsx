@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { MatchEvent, ReviewClip, TeamKey } from '../types';
+import { exitFullscreen, isFullscreenActive, requestFullscreen } from '../utils/fullscreen';
 
 interface ReviewModalProps {
   clip: ReviewClip;
@@ -19,8 +20,10 @@ const ICONS: Partial<Record<MatchEvent['type'], string>> = {
 };
 
 export default function ReviewModal({ clip, events, teamNames, onClose }: ReviewModalProps) {
+  const backdropRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const durationMs = Math.max(1000, clip.endedAt - clip.startedAt);
+  const [fullscreen, setFullscreen] = useState(false);
 
   useEffect(() => {
     // Chrome-recorded webm blobs often report duration=Infinity until you seek
@@ -46,6 +49,28 @@ export default function ReviewModal({ clip, events, teamNames, onClose }: Review
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Best-effort auto-fullscreen on open (works on most non-iOS browsers even
+  // though the request happens a tick after the button tap that opened this
+  // modal). iOS Safari requires a fresh, direct tap — the manual button below
+  // covers that case reliably.
+  useEffect(() => {
+    const video = videoRef.current;
+    requestFullscreen(backdropRef.current, video);
+
+    const syncState = () => setFullscreen(isFullscreenActive(video));
+    document.addEventListener('fullscreenchange', syncState);
+    document.addEventListener('webkitfullscreenchange', syncState);
+    video?.addEventListener('webkitendfullscreen', syncState);
+    syncState();
+
+    return () => {
+      document.removeEventListener('fullscreenchange', syncState);
+      document.removeEventListener('webkitfullscreenchange', syncState);
+      video?.removeEventListener('webkitendfullscreen', syncState);
+      exitFullscreen(video);
+    };
+  }, []);
+
   const markers = events
     .filter((e) => e.createdAt >= clip.startedAt && e.createdAt <= clip.endedAt)
     .map((e) => ({
@@ -60,14 +85,32 @@ export default function ReviewModal({ clip, events, teamNames, onClose }: Review
     video.play().catch(() => {});
   }
 
+  function toggleFullscreen() {
+    if (isFullscreenActive(videoRef.current)) {
+      exitFullscreen(videoRef.current);
+    } else {
+      requestFullscreen(backdropRef.current, videoRef.current);
+    }
+  }
+
   return (
-    <div className="review-modal-backdrop" role="dialog" aria-modal="true">
+    <div className="review-modal-backdrop" role="dialog" aria-modal="true" ref={backdropRef}>
       <div className="review-modal">
         <div className="review-modal-header">
           <h3>📺 VAR Review — last {Math.round(durationMs / 1000)}s</h3>
-          <button className="review-modal-close" onClick={onClose} aria-label="Close review">
-            ✕
-          </button>
+          <div className="review-modal-header-actions">
+            <button
+              className="review-modal-fullscreen"
+              onClick={toggleFullscreen}
+              aria-label={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+              title={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+            >
+              {fullscreen ? '⤢' : '⛶'}
+            </button>
+            <button className="review-modal-close" onClick={onClose} aria-label="Close review">
+              ✕
+            </button>
+          </div>
         </div>
 
         <video
