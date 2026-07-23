@@ -52,19 +52,30 @@ React + TypeScript + Vite, `@tensorflow/tfjs` + `@tensorflow-models/coco-ssd`,
 Camera access requires a **secure context** (HTTPS, or `localhost`). Two ways
 to get this running on your phone:
 
-### Option A — deploy it (recommended, easiest)
+### Option A — GitHub Pages (recommended, easiest — already wired up)
 
-Push this repo to Vercel, Netlify, or GitHub Pages (any static host that gives
-you HTTPS for free), then open the deployed URL on your phone and use
-"Add to Home Screen" / "Install app" from the browser menu to install it as a
-PWA.
+This repo includes a GitHub Actions workflow
+(`.github/workflows/deploy.yml`) that builds and deploys to GitHub Pages on
+every push to `main`. One-time setup: in the repo on GitHub, go to
+**Settings → Pages → Build and deployment → Source**, and select
+**GitHub Actions**. The next push (or re-running the workflow from the
+**Actions** tab) will publish the site to:
+
+```
+https://<your-username>.github.io/football-live-var-system/
+```
+
+Open that URL on your phone and use "Add to Home Screen" / "Install app"
+from the browser menu to install it as a PWA — no laptop or LAN needed.
+
+You can also deploy the same `dist/` output to Vercel or Netlify instead if
+you prefer (just drop the `base` path override in `vite.config.ts`, which is
+only needed for GitHub Pages' subpath hosting):
 
 ```bash
 npm install
 npm run build   # outputs static site to dist/
 ```
-
-Deploy the `dist/` folder to your static host of choice.
 
 ### Option B — run the dev server on your laptop, open it from your phone
 

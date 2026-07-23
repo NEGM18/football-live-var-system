@@ -5,6 +5,8 @@ import basicSsl from '@vitejs/plugin-basic-ssl'
 
 // https://vite.dev/config/
 export default defineConfig(({ command }) => ({
+  // Served from https://<user>.github.io/football-live-var-system/ in production.
+  base: command === 'build' ? '/football-live-var-system/' : '/',
   // Camera access requires a secure context. In dev, serve over HTTPS with a
   // self-signed cert (via basicSsl below) so the app can be opened directly
   // from a phone on the same WiFi network (accept the browser's certificate
