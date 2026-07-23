@@ -1,11 +1,22 @@
 import { useCallback, useRef, useState } from 'react';
-import CameraView, { type CameraAnalysis } from './components/CameraView';
+import CameraView, { type CameraAnalysis, type CameraViewHandle } from './components/CameraView';
 import Scoreboard from './components/Scoreboard';
 import ControlPanel from './components/ControlPanel';
 import EventLog from './components/EventLog';
+import ReviewModal from './components/ReviewModal';
 import { useMatchClock } from './hooks/useMatchClock';
-import type { GoalSide, MatchEvent, MatchEventType, Score, TeamCentroid, TeamKey } from './types';
+import type {
+  GoalSide,
+  MatchEvent,
+  MatchEventType,
+  ReviewClip,
+  Score,
+  TeamCentroid,
+  TeamKey,
+} from './types';
 import './App.css';
+
+const REVIEW_TRIGGER_TYPES: MatchEventType[] = ['potential-foul', 'var-review'];
 
 export default function App() {
   const clock = useMatchClock();
@@ -16,9 +27,12 @@ export default function App() {
   const [goalSide, setGoalSide] = useState<GoalSide>('right');
   const [centroids, setCentroids] = useState<TeamCentroid[]>([]);
   const [detectedCount, setDetectedCount] = useState(0);
+  const [reviewClip, setReviewClip] = useState<ReviewClip | null>(null);
+  const [reviewUnavailable, setReviewUnavailable] = useState(false);
 
   const clockRef = useRef(clock);
   clockRef.current = clock;
+  const cameraRef = useRef<CameraViewHandle>(null);
 
   const handleAnalysis = useCallback((analysis: CameraAnalysis) => {
     setCentroids(analysis.centroids);
@@ -41,6 +55,15 @@ export default function App() {
     if (type === 'goal' && team) {
       setScore((prev) => ({ ...prev, [team]: prev[team] + 1 }));
     }
+    if (REVIEW_TRIGGER_TYPES.includes(type)) {
+      const clip = cameraRef.current?.getReviewClip() ?? null;
+      if (clip) {
+        setReviewClip(clip);
+        setReviewUnavailable(false);
+      } else {
+        setReviewUnavailable(true);
+      }
+    }
   }, []);
 
   return (
@@ -61,12 +84,19 @@ export default function App() {
       />
 
       <CameraView
+        ref={cameraRef}
         active
         defendingTeam={defendingTeam}
         goalSide={goalSide}
         onAnalysis={handleAnalysis}
       />
       <p className="detection-status">{detectedCount} player(s) detected</p>
+      {reviewUnavailable && (
+        <p className="detection-status detection-status--warn">
+          Instant replay isn't available yet — wait a moment after the camera starts, or your
+          browser may not support in-browser clip recording.
+        </p>
+      )}
 
       <ControlPanel
         teamNames={teamNames}
@@ -89,6 +119,17 @@ export default function App() {
           single, uncalibrated camera. It is a decision-support aid, not an official VAR ruling.
         </p>
       </footer>
+
+      {reviewClip && (
+        <ReviewModal
+          clip={reviewClip}
+          events={events}
+          teamNames={teamNames}
+          onClose={() => {
+            setReviewClip(null);
+          }}
+        />
+      )}
     </div>
   );
 }

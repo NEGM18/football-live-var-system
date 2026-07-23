@@ -24,6 +24,7 @@ export type MatchEventType =
   | 'card-yellow'
   | 'card-red'
   | 'foul'
+  | 'potential-foul'
   | 'offside-flag'
   | 'var-review'
   | 'half-time'
@@ -47,4 +48,12 @@ export interface Score {
 export interface TeamCentroid {
   team: TeamKey;
   color: RGB;
+}
+
+export interface ReviewClip {
+  url: string;
+  blob: Blob;
+  /** Date.now() ms marking the start/end of the buffered window this clip covers. */
+  startedAt: number;
+  endedAt: number;
 }

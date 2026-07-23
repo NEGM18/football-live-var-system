@@ -166,6 +166,10 @@
   color: var(--text-dim);
 }
 
+.detection-status--warn {
+  color: var(--accent);
+}
+
 /* Control panel */
 
 .control-panel {
@@ -279,6 +283,11 @@
   border-color: var(--accent);
 }
 
+.event-btn.potential-foul {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 /* Event log */
 
 .event-log {
@@ -319,4 +328,101 @@
   color: var(--text-dim);
   font-size: 11px;
   padding: 8px 4px 0;
+}
+
+/* Review modal */
+
+.review-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  z-index: 50;
+}
+
+.review-modal {
+  width: 100%;
+  max-width: 480px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 90svh;
+  overflow-y: auto;
+}
+
+.review-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.review-modal-header h3 {
+  font-size: 15px;
+}
+
+.review-modal-close {
+  background: var(--bg-panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  line-height: 1;
+}
+
+.review-video {
+  width: 100%;
+  border-radius: 10px;
+  background: #000;
+  max-height: 50svh;
+}
+
+.review-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.review-timeline-track {
+  position: relative;
+  height: 34px;
+  background: var(--bg-panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.review-marker {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--bg-panel);
+  border: 1px solid var(--accent);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.review-timeline-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.review-empty-hint {
+  font-size: 12px;
+  color: var(--text-dim);
+  text-align: center;
 }

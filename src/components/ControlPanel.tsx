@@ -65,6 +65,10 @@ export default function ControlPanel({
 
       <section className="control-section">
         <h3>Match events</h3>
+        <p className="control-hint">
+          "Potential foul" and "VAR Review" both open an instant replay of the last 30 seconds of
+          footage with a scrubbable timeline.
+        </p>
         <div className="event-grid">
           <button className="event-btn goal" onClick={() => onEvent('goal', 'A')}>
             ⚽ Goal {teamNames.A}
@@ -92,6 +96,13 @@ export default function ControlPanel({
           </button>
           <button className="event-btn foul" onClick={() => onEvent('foul', 'B')}>
             Foul {teamNames.B}
+          </button>
+
+          <button className="event-btn potential-foul" onClick={() => onEvent('potential-foul', 'A')}>
+            🔎 Potential foul {teamNames.A}
+          </button>
+          <button className="event-btn potential-foul" onClick={() => onEvent('potential-foul', 'B')}>
+            🔎 Potential foul {teamNames.B}
           </button>
 
           <button className="event-btn offside" onClick={() => onEvent('offside-flag', 'A')}>

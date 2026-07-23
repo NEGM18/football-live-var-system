@@ -5,8 +5,10 @@ VAR-style assistant **entirely on-device** — no backend, no video ever leaves
 the phone. It uses your camera to detect players and the ball in real time,
 clusters them into two teams by kit colour, draws an approximate offside line
 from the last two detected defenders, and gives a referee/assistant a simple
-panel to log goals, cards, fouls, offside flags, and VAR reviews on a live
-match timeline.
+panel to log goals, cards, fouls, potential fouls, offside flags, and VAR
+reviews on a live match timeline — including an instant replay of the last
+30 seconds with a scrubbable timeline whenever a potential foul or VAR review
+is flagged.
 
 ## ⚠️ What this is (and isn't)
 
@@ -37,7 +39,16 @@ not an official officiating tool.
   side of the frame their goal is on, sorts defenders by distance from goal
   and draws a line at the second-nearest (the last outfield defender).
 - **Match panel**: clock, score, team names, and a tappable event log (goal,
-  yellow/red card, foul, offside flag, VAR review, kickoff/half-time/full-time).
+  yellow/red card, foul, potential foul, offside flag, VAR review,
+  kickoff/half-time/full-time).
+- **Instant replay**: a `MediaRecorder` continuously records a rolling ~30
+  second buffer of the camera feed in 1-second chunks in the background (all
+  on-device). Tapping "Potential foul" or "VAR Review" instantly opens that
+  clip in a review modal with native playback controls plus a timeline strip
+  showing exactly where each logged event fell inside the clip — tap a marker
+  to jump straight to it. Requires a browser with `MediaRecorder` video
+  support (Chrome/Edge/Firefox on Android work well; support varies on iOS
+  Safari — if unavailable, the app shows a message instead of a clip).
 - **PWA**: installable to your phone's home screen; the app shell and model
   weights are cached by a service worker so it keeps working after the first
   load even with a flaky connection.
@@ -104,6 +115,9 @@ camera permission when prompted.
 3. Use the event buttons to log goals, cards, fouls, offside flags, and VAR
    reviews as the match happens; the timeline at the bottom keeps a running
    log with match-clock timestamps.
+4. Tap **Potential foul** or **VAR Review** to instantly open the last 30
+   seconds of footage in a review modal. Scrub with the native video controls,
+   or tap a marker on the timeline strip to jump to that logged event.
 
 ## Local development
 

@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
-import type { Detection, GoalSide, TeamCentroid, TeamKey } from '../types';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import type { Detection, GoalSide, ReviewClip, TeamCentroid, TeamKey } from '../types';
 import { useObjectDetector } from '../hooks/useObjectDetector';
+import { useInstantReplay } from '../hooks/useInstantReplay';
 import { assignTeams, rgbToCss } from '../utils/teamClustering';
 import { computeOffsideLine, type OffsideResult } from '../utils/offside';
 
@@ -11,6 +12,11 @@ export interface CameraAnalysis {
   offside: OffsideResult | null;
 }
 
+export interface CameraViewHandle {
+  /** Snapshot of the last ~30s of camera footage for a VAR-style review. */
+  getReviewClip: () => ReviewClip | null;
+}
+
 interface CameraViewProps {
   active: boolean;
   defendingTeam: TeamKey;
@@ -18,7 +24,10 @@ interface CameraViewProps {
   onAnalysis: (analysis: CameraAnalysis) => void;
 }
 
-export default function CameraView({ active, defendingTeam, goalSide, onAnalysis }: CameraViewProps) {
+const CameraView = forwardRef<CameraViewHandle, CameraViewProps>(function CameraView(
+  { active, defendingTeam, goalSide, onAnalysis },
+  ref,
+) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
@@ -30,9 +39,10 @@ export default function CameraView({ active, defendingTeam, goalSide, onAnalysis
   goalSideRef.current = goalSide;
 
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
 
   useEffect(() => {
-    let stream: MediaStream | null = null;
+    let activeStream: MediaStream | null = null;
     let cancelled = false;
 
     navigator.mediaDevices
@@ -45,10 +55,11 @@ export default function CameraView({ active, defendingTeam, goalSide, onAnalysis
           s.getTracks().forEach((t) => t.stop());
           return;
         }
-        stream = s;
+        activeStream = s;
         if (videoRef.current) {
           videoRef.current.srcObject = s;
         }
+        setStream(s);
       })
       .catch((err: unknown) => {
         if (cancelled) return;
@@ -57,9 +68,13 @@ export default function CameraView({ active, defendingTeam, goalSide, onAnalysis
 
     return () => {
       cancelled = true;
-      stream?.getTracks().forEach((t) => t.stop());
+      activeStream?.getTracks().forEach((t) => t.stop());
     };
   }, []);
+
+  const { getClip } = useInstantReplay(stream);
+
+  useImperativeHandle(ref, () => ({ getReviewClip: getClip }), [getClip]);
 
   const { status: detectorStatus, error: detectorError } = useObjectDetector({
     videoRef,
@@ -165,4 +180,6 @@ export default function CameraView({ active, defendingTeam, goalSide, onAnalysis
       )}
     </div>
   );
-}
+});
+
+export default CameraView;
